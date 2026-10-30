@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ROADSTER — концепт электрического гиперкара. Неофициальный фан-проект для портфолио." />
+  <meta name="theme-color" content="#000000" />
+  <title>ROADSTER — The Future is Here · фан-концепт</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23000'/%3E%3Cpath d='M5 20c4-6 18-6 22 0' stroke='%2300E5FF' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* =========================================================
+       1. ТОКЕНЫ — меняйте цвета здесь
+       ========================================================= */
+    :root {
+      --black: #000;
+      --night: #05070a;
+      --white: #f5f7fa;
+      --muted: #8a93a0;
+      --line: rgba(255, 255, 255, 0.1);
+      --cyan: #00e5ff;           /* основной неон */
+      --cyan-dim: rgba(0, 229, 255, 0.14);
+      --glass: rgba(255, 255, 255, 0.045);
+      --glass-border: rgba(255, 255, 255, 0.12);
+
+      --wide: 'Michroma', 'Montserrat', sans-serif;   /* широкий шрифт для латинских заголовков */
+      --font: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --container: min(1240px, 100% - 48px);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0; background: var(--black); color: var(--white);
+      font-family: var(--font); font-size: 16px; line-height: 1.6;
+      -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    }
+    h1, h2, h3, p { margin: 0; }
+    a { color: inherit; }
+    button { font: inherit; color: inherit; }
+    :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 6px; }
+    ::selection { background: var(--cyan); color: #000; }
+    .container { width: var(--container); margin-inline: auto; }
+
+    .eyebrow {
+      font-family: var(--wide); font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--cyan);
+    }
+
+    /* =========================================================
+       2. 3D-СЦЕНА
+       Холст закреплён на весь экран. Заголовок ROADSTER лежит
+       ПОД холстом (z-index 0), остальной контент — НАД ним (z-index 2),
+       поэтому машина «проезжает» перед огромной надписью.
+       ========================================================= */
+    #scene {
+      position: fixed; inset: 0; z-index: 1;
+      width: 100%; height: 100%; display: block; pointer-events: none;
+      transition: opacity .6s var(--ease);
+    }
+    .backdrop {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 60% 45% at 50% 62%, rgba(0, 229, 255, 0.10), transparent 70%),
+        radial-gradient(ellipse 90% 60% at 50% 120%, rgba(0, 120, 255, 0.12), transparent 70%),
+        var(--black);
+    }
+    body.no-webgl .backdrop::after {
+      /* запасной вариант без WebGL: светящийся силуэт-полоса */
+      content: ''; position: absolute; left: 20%; right: 20%; top: 58%; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      box-shadow: 0 0 40px 6px rgba(0,229,255,.5);
+    }
+    .layer { position: relative; z-index: 2; }
+
+    /* =========================================================
+       3. НАВИГАЦИЯ (стекло)
+       ========================================================= */
+    .nav {
+      position: fixed; top: 16px; left: 50%; z-index: 30; transform: translateX(-50%);
+      width: min(1240px, 100% - 24px);
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 10px 10px 10px 22px; border-radius: 999px;
+      background: rgba(10, 12, 16, 0.45);
+      -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
+      border: 1px solid var(--glass-border);
+    }
+    .nav__brand { font-family: var(--wide); font-size: 14px; letter-spacing: 0.3em; text-decoration: none; }
+    .nav__links { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
+    .nav__links a {
+      display: block; padding: 9px 16px; border-radius: 999px; font-size: 13.5px; font-weight: 500;
+      text-decoration: none; color: #c7ced8; transition: color .2s, background-color .2s;
+    }
+    .nav__links a:hover { color: #fff; background: rgba(255,255,255,0.07); }
+
+    /* =========================================================
+       4. НЕОНОВЫЕ КНОПКИ
+       ========================================================= */
+    .btn {
+      position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      min-height: 52px; padding: 0 30px; border-radius: 999px; border: 1px solid transparent;
+      font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
+      cursor: pointer; transition: transform .35s var(--ease), box-shadow .35s var(--ease), background-color .3s, color .3s, border-color .3s;
+    }
+    .btn--neon {
+      background: var(--cyan); color: #001014;
+      box-shadow: 0 0 0 0 rgba(0,229,255,0), 0 10px 30px -10px rgba(0,229,255,0.7);
+    }
+    .btn--neon:hover { transform: translateY(-2px); box-shadow: 0 0 24px 2px rgba(0,229,255,0.55), 0 14px 40px -10px rgba(0,229,255,0.9); }
+    .btn--glass {
+      background: rgba(255,255,255,0.06); border-color: var(--glass-border); color: var(--white);
+      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    }
+    .btn--glass:hover { border-color: rgba(0,229,255,0.6); color: var(--cyan); transform: translateY(-2px); }
+    .btn:active { transform: scale(0.97); }
+    .btn--small { min-height: 42px; padding: 0 20px; font-size: 12px; }
+
+    /* =========================================================
+       5. HERO
+       ========================================================= */
+    .hero {
+      position: relative; min-height: 100vh; min-height: 100svh;
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 120px 0 48px;
+    }
+    /* Огромный заголовок: под 3D-холстом */
+    .hero__title {
+      position: relative; z-index: 0;
+      font-family: var(--wide); font-weight: 400; text-align: center;
+      font-size: clamp(54px, 13.5vw, 230px); line-height: 1; letter-spacing: 0.06em;
+      margin-right: -0.06em; /* компенсация трекинга последней буквы */
+      background: linear-gradient(180deg, #ffffff 10%, rgba(255,255,255,0.08) 95%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation: title-in 1.6s var(--ease) both;
+    }
+    @keyframes title-in { from { opacity: 0; letter-spacing: 0.25em; filter: blur(8px); } }
+    .hero__sub {
+      position: relative; z-index: 2;
+      margin-top: 18px; text-align: center; font-family: var(--wide); font-size: clamp(12px, 1.3vw, 15px);
+      letter-spacing: 0.5em; text-transform: uppercase; color: var(--cyan);
+      text-shadow: 0 0 18px rgba(0,229,255,0.6);
+      animation: fade-up 1.2s .5s var(--ease) both;
+    }
+    .hero__bottom {
+      position: relative; z-index: 2;
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; flex-wrap: wrap;
+      animation: fade-up 1.2s .8s var(--ease) both;
+    }
+    .hero__quick { display: flex; gap: 40px; }
+    .quick__v { font-family: var(--wide); font-size: 26px; line-height: 1; }
+    .quick__v small { font-family: var(--font); font-size: 13px; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+    .quick__l { margin-top: 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
+    .hero__cta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .scroll-hint {
+      position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 2;
+      width: 22px; height: 36px; border: 1px solid rgba(255,255,255,.3); border-radius: 12px;
+    }
+    .scroll-hint::after {
+      content: ''; position: absolute; left: 50%; top: 7px; width: 2px; height: 7px; margin-left: -1px;
+      border-radius: 2px; background: var(--cyan); animation: wheel 1.8s ease-in-out infinite;
+    }
+    @keyframes wheel { 0% { opacity: 0; transform: translateY(0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(12px); } }
+    @keyframes fade-up { from { opacity: 0; transform: translateY(20px); } }
+
+    /* =========================================================
+       6. СЕКЦИИ, СТЕКЛЯННЫЕ ПАНЕЛИ, FADE-IN ПРИ СКРОЛЛЕ
+       ========================================================= */
+    .section { padding: clamp(100px, 14vw, 180px) 0; }
+    .section__title {
+      margin-top: 18px; font-family: var(--wide); font-weight: 400;
+      font-size: clamp(30px, 4.6vw, 64px); line-height: 1.1; letter-spacing: 0.02em;
+    }
+    .section__lead { margin-top: 18px; max-width: 520px; color: var(--muted); font-size: 17px; font-weight: 300; }
+
+    .glass {
+      background: var(--glass);
+      -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+      border: 1px solid var(--glass-border); border-radius: 24px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .reveal { opacity: 0; transform: translateY(40px); transition: opacity 1s var(--ease), transform 1s var(--ease); }
+    .reveal.is-visible { opacity: 1; transform: none; }
+    .reveal-delay-1 { transition-delay: .1s; } .reveal-delay-2 { transition-delay: .2s; } .reveal-delay-3 { transition-delay: .3s; }
+
+    /* --- Характеристики --- */
+    .specs__layout { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+    .specs__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .spec { padding: 30px 26px; position: relative; overflow: hidden; }
+    .spec::before {
+      content: ''; position: absolute; left: 0; top: 0; width: 100%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent); opacity: .5;
+    }
+    .spec__v {
+      font-family: var(--wide); font-size: clamp(34px, 3.6vw, 52px); line-height: 1;
+      color: #fff; text-shadow: 0 0 24px rgba(0,229,255,0.35);
+      font-variant-numeric: tabular-nums;
+    }
+    .spec__u { margin-left: 6px; font-family: var(--font); font-size: 15px; color: var(--cyan); }
+    .spec__l { margin-top: 14px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
+
+    /* --- Комплектации --- */
+    .configs__head { text-align: center; margin-bottom: 64px; }
+    .configs__head .section__lead { margin-inline: auto; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .card {
+      display: flex; flex-direction: column; padding: 34px 30px 30px;
+      transition: transform .5s var(--ease), border-color .4s, box-shadow .5s var(--ease);
+    }
+    .card:hover { transform: translateY(-6px); border-color: rgba(0,229,255,0.45); box-shadow: 0 0 40px -10px rgba(0,229,255,0.4), inset 0 1px 0 rgba(255,255,255,0.08); }
+    .card--featured { border-color: rgba(0,229,255,0.5); background: linear-gradient(180deg, rgba(0,229,255,0.09), rgba(255,255,255,0.03)); }
+    .card__top { display: flex; justify-content: space-between; align-items: center; min-height: 26px; }
+    .card__name { font-family: var(--wide); font-size: 22px; letter-spacing: 0.04em; }
+    .badge { padding: 4px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; background: var(--cyan); color: #001014; }
+    .card__desc { margin-top: 12px; color: var(--muted); font-size: 14.5px; min-height: 48px; }
+    .card__price { margin: 28px 0 24px; font-family: var(--wide); font-size: 34px; }
+    .card__price small { display: block; margin-top: 6px; font-family: var(--font); font-size: 12px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+    .card ul { list-style: none; margin: 0 0 30px; padding: 0; flex: 1; }
+    .card li { display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); font-size: 14px; color: #d3d9e1; }
+    .card li::before { content: ''; flex-shrink: 0; width: 6px; height: 6px; margin-top: 8px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+    .card .btn { width: 100%; }
+    .footnote { margin-top: 26px; text-align: center; font-size: 12px; color: #5d6670; }
+
+    /* --- Футер --- */
+    .footer { border-top: 1px solid var(--line); padding: 80px 0 40px; background: linear-gradient(180deg, rgba(0,0,0,0.6), #000 40%); }
+    .footer__grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 40px; }
+    .footer__brand { font-family: var(--wide); font-size: 28px; letter-spacing: .25em; }
+    .footer h3 { font-size: 12px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+    .footer address { font-style: normal; color: #d3d9e1; font-size: 14.5px; }
+    .footer address + address { margin-top: 16px; }
+    .footer a { text-decoration: none; }
+    .footer a:hover { color: var(--cyan); }
+    .phone { font-family: var(--wide); font-size: 18px; letter-spacing: .04em; }
+    .disclaimer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 12px; color: #5d6670; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+    /* Тост для демо-кнопок */
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; z-index: 50; transform: translate(-50%, 30px);
+      padding: 14px 22px; border-radius: 999px; font-size: 14px; opacity: 0; pointer-events: none;
+      transition: opacity .35s var(--ease), transform .45s var(--ease);
+    }
+    .toast.is-shown { opacity: 1; transform: translate(-50%, 0); }
+
+    /* =========================================================
+       7. АДАПТИВНОСТЬ
+       ========================================================= */
+    @media (max-width: 980px) {
+      .specs__layout { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: 1fr; max-width: 520px; margin-inline: auto; }
+      .footer__grid { grid-template-columns: 1fr 1fr; }
+      .footer__grid > :first-child { grid-column: 1 / -1; }
+    }
+    @media (max-width: 760px) {
+      .nav__links { display: none; }
+      /* На телефоне: заголовок сверху, машина — в середине экрана,
+         весь текст — внизу, так что 3D не перекрывает его */
+      .hero { padding-top: 100px; }
+      .hero__bottom { flex-direction: column; align-items: stretch; gap: 22px; }
+      .hero__quick { justify-content: space-between; gap: 12px; }
+      .quick__v { font-size: 20px; }
+      .hero__cta .btn { flex: 1; }
+      .scroll-hint { display: none; }
+    }
+    @media (max-width: 560px) {
+      :root { --container: min(1240px, 100% - 32px); }
+      .specs__grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .spec { padding: 22px 16px; }
+      .spec__v { font-size: 28px; }
+      .footer__grid { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+  <canvas id="scene" aria-label="3D-модель концепт-кара, вращающаяся в воздухе" role="img"></canvas>
+
+  <nav class="nav" aria-label="Основное меню">
+    <a class="nav__brand" href="#top">ROADSTER</a>
+    <ul class="nav__links">
+      <li><a href="#specs">Характеристики</a></li>
+      <li><a href="#configs">Комплектации</a></li>
+      <li><a href="#contacts">Контакты</a></li>
+    </ul>
+    <a class="btn btn--neon btn--small" href="#configs">Заказать</a>
+  </nav>
+
+  <main id="top">
+    <!-- ======================= HERO ======================= -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container">
+        <h1 class="hero__title" id="hero-title">ROADSTER</h1>
+        <p class="hero__sub">The Future is Here</p>
+      </div>
+
+      <div class="container hero__bottom">
+        <div class="hero__quick">
+          <div><div class="quick__v">0.9<small>с</small></div><div class="quick__l">0–100 км/ч</div></div>
+          <div><div class="quick__v">450<small>км/ч</small></div><div class="quick__l">Максимум</div></div>
+          <div><div class="quick__v">1200<small>км</small></div><div class="quick__l">Запас хода</div></div>
+        </div>
+        <div class="hero__cta">
+          <a class="btn btn--neon" href="#configs">Заказать</a>
+          <a class="btn btn--glass" href="#specs">Подробнее</a>
+        </div>
+      </div>
+      <span class="scroll-hint" aria-hidden="true"></span>
+    </section>
+
+    <!-- ======================= ХАРАКТЕРИСТИКИ ======================= -->
+    <section class="section layer" id="specs" aria-labelledby="specs-title">
+      <div class="container specs__layout">
+        <div class="reveal">
+          <p class="eyebrow">Performance</p>
+          <h2 class="section__title" id="specs-title">Быстрее, чем&nbsp;мысль</h2>
+          <p class="section__lead">Три электромотора, полный привод с векторизацией тяги и аэродинамика, рассчитанная в цифровой трубе. Цифры, которые сложно осознать.</p>
+        </div>
+        <div class="specs__grid">
+          <div class="spec glass reveal reveal-delay-1">
+            <div><span class="spec__v" data-count="0.9" data-decimals="1">0.0</span><span class="spec__u">сек</span></div>
+            <p class="spec__l">Разгон 0–100 км/ч</p>
+          </div>
+          <div class="spec glass reveal reveal-delay-2">
+            <div><span class="spec__v" data-count="450">0</span><span class="spec__u">км/ч</span></div>
+            <p class="spec__l">Максимальная скорость</p>
+          </div>
+          <div class="spec glass reveal reveal-delay-1">
+            <div><span class="spec__v" data-count="1200">0</span><span class="spec__u">км</span></div>
+            <p class="spec__l">Запас хода</p>
+          </div>
+          <div class="spec glass reveal reveal-delay-2">
+            <div><span class="spec__v" data-count="1500">0</span><span class="spec__u">л.с.</span></div>
+            <p class="spec__l">Мощность</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= КОМПЛЕКТАЦИИ ======================= -->
+    <section class="section layer" id="configs" aria-labelledby="configs-title">
+      <div class="container">
+        <header class="configs__head reveal">
+          <p class="eyebrow">Configurations</p>
+          <h2 class="section__title" id="configs-title">Выберите свой</h2>
+          <p class="section__lead">Три версии — от очень быстрой до неприлично быстрой.</p>
+        </header>
+
+        <div class="cards">
+          <article class="card glass reveal">
+            <div class="card__top"><h3 class="card__name">Base</h3></div>
+            <p class="card__desc">Стандартная версия. Всё, что нужно, чтобы опередить время.</p>
+            <p class="card__price">$200,000<small>Базовая цена</small></p>
+            <ul>
+              <li>Полный привод, 3 мотора</li>
+              <li>Съёмная стеклянная крыша</li>
+              <li>Запас хода 1200 км</li>
+            </ul>
+            <button class="btn btn--glass js-demo" type="button">Выбрать Base</button>
+          </article>
+
+          <article class="card card--featured glass reveal reveal-delay-1">
+            <div class="card__top"><h3 class="card__name">Plaid+</h3><span class="badge">Популярный</span></div>
+            <p class="card__desc">Улучшенная аэродинамика и автопилот.</p>
+            <p class="card__price">$250,000<small>Базовая цена</small></p>
+            <ul>
+              <li>Активное антикрыло</li>
+              <li>Автопилот нового поколения</li>
+              <li>Карбоновый пакет</li>
+            </ul>
+            <button class="btn btn--neon js-demo" type="button">Выбрать Plaid+</button>
+          </article>
+
+          <article class="card glass reveal reveal-delay-2">
+            <div class="card__top"><h3 class="card__name">Space Edition</h3></div>
+            <p class="card__desc">Версия с ракетными ускорителями. Да, серьёзно*.</p>
+            <p class="card__price">$350,000<small>Базовая цена</small></p>
+            <ul>
+              <li>10 ракетных ускорителей</li>
+              <li>Режим «прыжок через пробку»</li>
+              <li>Скафандр в подарок</li>
+            </ul>
+            <button class="btn btn--glass js-demo" type="button">Выбрать Space</button>
+          </article>
+        </div>
+        <p class="footnote">* Нет, не серьёзно. Все характеристики и цены вымышлены.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ======================= ФУТЕР / КОНТАКТЫ ======================= -->
+  <footer class="footer layer" id="contacts">
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <p class="footer__brand">ROADSTER</p>
+          <p style="margin-top:14px;color:var(--muted);max-width:340px;font-size:14px">Концепт электрического гиперкара. Дизайн-проект для портфолио.</p>
+        </div>
+        <div>
+          <h3>Шоурумы Tesla</h3>
+          <address>3500 Deer Creek Road<br />Palo Alto, CA</address>
+          <address>Gigafactory Texas<br />Austin, TX</address>
+        </div>
+        <div>
+          <h3>Поддержка Tesla</h3>
+          <a class="phone" href="tel:+18777983752">1-877-798-3752</a>
+          <p style="margin-top:12px;font-size:14px"><a href="https://www.tesla.com" target="_blank" rel="noopener noreferrer" style="color:var(--cyan)">tesla.com →</a></p>
+        </div>
+      </div>
+      <div class="disclaimer">
+        <span>Неофициальный фан-концепт. Не связан с Tesla, Inc. и не одобрен ею. Tesla — товарный знак Tesla, Inc.</span>
+        <span>Характеристики, комплектации и цены вымышлены.</span>
+      </div>
+    </div>
+  </footer>
+
+  <div class="toast glass" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Three.js r128 (глобальный объект THREE) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+  (() => {
+    'use strict';
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = () => window.innerWidth < 760;
+
+    /* =========================================================
+       A. ИНТЕРФЕЙС: fade-in, счётчики, демо-кнопки
+       ========================================================= */
+    // Счётчик: плавно «докручивает» число до значения из data-count
+    function countUp(el) {
+      const target = parseFloat(el.dataset.count);
+      const decimals = parseInt(el.dataset.decimals || '0', 10);
+      const dur = reduceMotion ? 1 : 1600;
+      const start = performance.now();
+      const fmt = (v) => decimals ? v.toFixed(decimals) : Math.round(v).toLocaleString('ru-RU');
+      (function tick(now) {
+        const k = Math.min((now - start) / dur, 1);
+        const eased = 1 - Math.pow(1 - k, 4);
+        el.textContent = fmt(target * eased);
+        if (k < 1) requestAnimationFrame(tick);
+      })(start);
+    }
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        en.target.classList.add('is-visible');
+        en.target.querySelectorAll('[data-count]').forEach(countUp);
+        io.unobserve(en.target);
+      });
+    }, { threshold: 0.2 });
+    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+    const toast = document.getElementById('toast');
+    let toastTimer;
+    document.querySelectorAll('.js-demo').forEach((b) => b.addEventListener('click', () => {
+      toast.textContent = 'Это демо-концепт: заказ не оформляется';
+      toast.classList.add('is-shown');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('is-shown'), 2400);
+    }));
+
+    /* =========================================================
+       B. THREE.JS — СЦЕНА, КАМЕРА, СВЕТ
+       ========================================================= */
+    const canvas = document.getElementById('scene');
+    const hasWebGL = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl') || c.getContext('experimental-webgl')); } catch { return false; } })();
+    if (typeof THREE === 'undefined' || !hasWebGL) { document.body.classList.add('no-webgl'); canvas.style.display = 'none'; return; }
+
+    // --- Настройки, которые удобно менять ---
+    const CONFIG = {
+      neon: 0x00e5ff,          // цвет неона: частицы, диски, подсветка
+      paint: 0xe8ecf1,         // цвет кузова (жемчужно-белый). Попробуйте 0x111418 для «чёрной» версии
+      glowIntensity: 2.2,      // яркость циановой подсветки под машиной
+      rimIntensity: 1.6,       // яркость контурного (заднего) света
+      particles: 900,          // количество частиц вокруг машины
+      rotateSpeed: 0.18,       // скорость вращения машины (рад/сек)
+    };
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);            // прозрачный фон — виден CSS-градиент
+    renderer.outputEncoding = THREE.sRGBEncoding;   // правильная цветопередача
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; // «киношный» тональный маппинг
+    renderer.toneMappingExposure = 1.1;
+
+    const scene = new THREE.Scene();
+
+    // КАМЕРА: узкий угол обзора (fov 32) даёт «студийную» перспективу, как в автопрезентациях
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+    const lookTarget = new THREE.Vector3(0, 1.05, 0); // точка, куда смотрит камера: выше — машина ниже в кадре
+
+    // СВЕТ
+    // 1) Полусферный: мягкий холодный верх и почти чёрный низ — базовое заполнение
+    scene.add(new THREE.HemisphereLight(0xcfeeff, 0x05070a, 0.55));
+    // 2) Ключевой свет: белый, спереди-сверху — даёт блики на кузове
+    const key = new THREE.DirectionalLight(0xffffff, 1.5);
+    key.position.set(4, 6, 5);
+    scene.add(key);
+    // 3) Контровой свет: циановый, сзади — обрисовывает силуэт неоном
+    const rim = new THREE.DirectionalLight(CONFIG.neon, CONFIG.rimIntensity);
+    rim.position.set(-5, 3, -6);
+    scene.add(rim);
+    // 4) Боковой синий заполняющий — объём с другой стороны
+    const fill = new THREE.DirectionalLight(0x3b6bff, 0.6);
+    fill.position.set(-6, 1.5, 4);
+    scene.add(fill);
+    // 5) Подсветка снизу: точечный циановый источник под днищем
+    const under = new THREE.PointLight(CONFIG.neon, CONFIG.glowIntensity, 6, 2);
+    under.position.set(0, -0.2, 0);
+    scene.add(under);
+
+    /* =========================================================
+       C. МОДЕЛЬ: оригинальный low-poly родстер из базовых геометрий
+       Ось X — длина машины (нос в сторону +X), Z — ширина.
+       ========================================================= */
+    const car = new THREE.Group();      // вся машина
+    const carRig = new THREE.Group();   // обёртка для наклонов и левитации
+    carRig.add(car);
+    scene.add(carRig);
+
+    const paint = new THREE.MeshStandardMaterial({ color: CONFIG.paint, metalness: 0.55, roughness: 0.22 });
+    const darkTrim = new THREE.MeshStandardMaterial({ color: 0x0b0d10, metalness: 0.4, roughness: 0.5 });
+    const glass = new THREE.MeshStandardMaterial({ color: 0x0a1820, metalness: 0.9, roughness: 0.05, transparent: true, opacity: 0.82, emissive: 0x00303a, emissiveIntensity: 0.35 });
+    const neonMat = new THREE.MeshBasicMaterial({ color: CONFIG.neon });
+    const tailMat = new THREE.MeshBasicMaterial({ color: 0xff2d55 });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.85, metalness: 0.1 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0x1b1f25, metalness: 0.9, roughness: 0.3 });
+
+    const WIDTH = 1.9;
+    const WHEEL_R = 0.38;
+    const WHEEL_X = 1.42;
+    const AXLE_Y = 0.42;
+
+    // --- Кузов: боковой профиль с арками колёс, «выдавленный» в ширину ---
+    const side = new THREE.Shape();
+    side.moveTo(-2.2, 0.3);
+    side.lineTo(-WHEEL_X - 0.5, 0.3);
+    side.absarc(-WHEEL_X, AXLE_Y - 0.12, WHEEL_R + 0.1, Math.PI, 0, true);   // задняя арка
+    side.lineTo(WHEEL_X - 0.5, 0.3);
+    side.absarc(WHEEL_X, AXLE_Y - 0.12, WHEEL_R + 0.1, Math.PI, 0, true);    // передняя арка
+    side.lineTo(2.18, 0.3);
+    side.quadraticCurveTo(2.42, 0.32, 2.36, 0.5);   // низкий нос
+    side.quadraticCurveTo(1.9, 0.66, 1.0, 0.78);    // длинный капот
+    side.lineTo(-1.5, 0.86);                        // линия плеч
+    side.quadraticCurveTo(-2.1, 0.9, -2.26, 0.74);  // задняя кромка
+    side.quadraticCurveTo(-2.32, 0.5, -2.2, 0.3);   // задний бампер
+    const bodyGeo = new THREE.ExtrudeGeometry(side, {
+      depth: WIDTH, bevelEnabled: true, bevelThickness: 0.14, bevelSize: 0.1, bevelSegments: 4, curveSegments: 24,
+    });
+    bodyGeo.translate(0, 0, -WIDTH / 2);
+    const body = new THREE.Mesh(bodyGeo, paint);
+    car.add(body);
+
+    // --- Кабина: стеклянная «капля», уже кузова ---
+    const cabinShape = new THREE.Shape();
+    cabinShape.moveTo(-1.3, 0.84);
+    cabinShape.lineTo(0.8, 0.8);
+    cabinShape.quadraticCurveTo(0.2, 1.3, -0.45, 1.3);   // лобовое стекло и крыша
+    cabinShape.quadraticCurveTo(-1.15, 1.28, -1.4, 0.88); // задняя часть
+    const cabinGeo = new THREE.ExtrudeGeometry(cabinShape, {
+      depth: 1.25, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.1, bevelSegments: 4, curveSegments: 20,
+    });
+    cabinGeo.translate(0, 0, -1.25 / 2);
+    car.add(new THREE.Mesh(cabinGeo, glass));
+
+    // --- Тёмные элементы: диффузор сзади и «юбки» по бокам ---
+    const diffuser = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.16, WIDTH * 0.85), darkTrim);
+    diffuser.position.set(-2.22, 0.36, 0);
+    car.add(diffuser);
+    [-1, 1].forEach((s) => {
+      const skirt = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.08, 0.06), darkTrim);
+      skirt.position.set(0, 0.32, s * (WIDTH / 2 + 0.12));
+      car.add(skirt);
+    });
+
+    // --- Световые полосы: сплошная циановая спереди, красная сзади ---
+    const frontBar = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.035, WIDTH * 0.92), neonMat);
+    frontBar.position.set(2.43, 0.5, 0);
+    car.add(frontBar);
+    const tailBar = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, WIDTH * 0.98), tailMat);
+    tailBar.position.set(-2.37, 0.7, 0);
+    car.add(tailBar);
+
+    // --- Антикрыло на двух стойках ---
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.04, WIDTH * 1.02), paint);
+    wing.position.set(-1.95, 1.18, 0);
+    wing.rotation.z = -0.08;
+    car.add(wing);
+    const wingEdge = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, WIDTH * 1.02), neonMat);
+    wingEdge.position.set(-2.16, 1.2, 0);
+    car.add(wingEdge);
+    [-0.55, 0.55].forEach((z) => {
+      const strut = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.32, 0.04), darkTrim);
+      strut.position.set(-1.92, 1.0, z);
+      strut.rotation.z = 0.25;
+      car.add(strut);
+    });
+
+    // --- Колёса: шина + тёмный диск + светящийся обод + спицы ---
+    const wheels = [];
+    function createWheel() {
+      const w = new THREE.Group();
+      const tire = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, 0.34, 32), tireMat);
+      tire.rotation.x = Math.PI / 2;
+      w.add(tire);
+      [-1, 1].forEach((s) => {
+        const disc = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL_R * 0.72, WHEEL_R * 0.72, 0.02, 32), rimMat);
+        disc.rotation.x = Math.PI / 2; disc.position.z = s * 0.175;
+        w.add(disc);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(WHEEL_R * 0.72, 0.014, 8, 48), neonMat);
+        ring.position.z = s * 0.19;
+        w.add(ring);
+        for (let i = 0; i < 5; i++) {
+          const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.05, WHEEL_R * 0.66, 0.02), darkTrim);
+          spoke.position.z = s * 0.19;
+          spoke.rotation.z = (i / 5) * Math.PI * 2;
+          spoke.translateY(WHEEL_R * 0.33);
+          w.add(spoke);
+        }
+      });
+      return w;
+    }
+    [[WHEEL_X, 1], [WHEEL_X, -1], [-WHEEL_X, 1], [-WHEEL_X, -1]].forEach(([x, s]) => {
+      const w = createWheel();
+      w.position.set(x, AXLE_Y - 0.12, s * (WIDTH / 2 - 0.02));
+      car.add(w);
+      wheels.push(w);
+    });
+
+    // --- Неоновый контур: тонкие линии по рёбрам кузова ---
+    const outline = new THREE.LineSegments(
+      new THREE.EdgesGeometry(bodyGeo, 35),
+      new THREE.LineBasicMaterial({ color: CONFIG.neon, transparent: true, opacity: 0.18 })
+    );
+    car.add(outline);
+
+    // Центрируем машину по высоте (опускаем ось вращения к середине кузова)
+    car.position.y = -0.1;
+
+    // --- «Свечение» под машиной: плоскость с радиальной текстурой ---
+    function radialTexture(inner, outer) {
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      const g = c.getContext('2d');
+      const grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+      grd.addColorStop(0, inner); grd.addColorStop(1, outer);
+      g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+      return new THREE.CanvasTexture(c);
+    }
+    const glow = new THREE.Mesh(
+      new THREE.PlaneGeometry(7, 3.6),
+      new THREE.MeshBasicMaterial({ map: radialTexture('rgba(0,229,255,0.85)', 'rgba(0,229,255,0)'), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    glow.rotation.x = -Math.PI / 2;
+    glow.position.y = -0.55;
+    carRig.add(glow);
+
+    // --- Пол: кольца-«радар», уходящие в темноту ---
+    const floor = new THREE.Group();
+    for (let i = 1; i <= 7; i++) {
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(i * 1.1, i * 1.1 + 0.012, 96),
+        new THREE.MeshBasicMaterial({ color: CONFIG.neon, transparent: true, opacity: 0.22 / i, side: THREE.DoubleSide })
+      );
+      ring.rotation.x = -Math.PI / 2;
+      floor.add(ring);
+    }
+    floor.position.y = -0.95;
+    scene.add(floor);
+
+    /* =========================================================
+       D. ЧАСТИЦЫ: неоновые искры, кружащие вокруг машины
+       ========================================================= */
+    const pCount = isMobile() ? Math.round(CONFIG.particles * 0.5) : CONFIG.particles;
+    const pPos = new Float32Array(pCount * 3);
+    const pMeta = [];
+    for (let i = 0; i < pCount; i++) {
+      const r = 2.8 + Math.random() * 4.2;
+      const a = Math.random() * Math.PI * 2;
+      const y = -0.8 + Math.random() * 3.4;
+      pMeta.push({ r, a, y, speed: 0.05 + Math.random() * 0.2, bob: Math.random() * Math.PI * 2 });
+      pPos.set([Math.cos(a) * r, y, Math.sin(a) * r], i * 3);
+    }
+    const pGeo = new THREE.BufferGeometry();
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({
+      color: CONFIG.neon, size: 0.06, map: radialTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'),
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true,
+    }));
+    scene.add(particles);
+
+    /* =========================================================
+       E. РАЗМЕРЫ, МЫШЬ, СКРОЛЛ
+       ========================================================= */
+    function resize() {
+      const w = window.innerWidth, h = window.innerHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      // Дистанция камеры подбирается так, чтобы машина (≈ FIT_WIDTH единиц
+      // по ширине) целиком помещалась в кадр при любой ширине экрана
+      const FIT_WIDTH = isMobile() ? 5.6 : 8.2;
+      const vFov = THREE.MathUtils.degToRad(camera.fov);
+      const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+      const dist = Math.max(isMobile() ? 9 : 11.5, (FIT_WIDTH / 2) / Math.tan(hFov / 2));
+      camera.position.set(0, 2.1, dist);
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const mouse = { x: 0, y: 0 };
+    window.addEventListener('pointermove', (e) => {
+      mouse.x = (e.clientX / window.innerWidth - 0.5) * 2;
+      mouse.y = (e.clientY / window.innerHeight - 0.5) * 2;
+    }, { passive: true });
+
+    // Плавные (сглаженные) значения, к которым стремится машина
+    const smooth = { x: 0, y: 0, scale: 1, tiltX: 0, tiltZ: 0, opacity: 1 };
+    const lerp = (a, b, k) => a + (b - a) * k;
+
+    /* =========================================================
+       F. ЦИКЛ АНИМАЦИИ
+       ========================================================= */
+    const clock = new THREE.Clock();
+    let running = true;
+
+    function frame() {
+      if (!running) return;
+      const dt = Math.min(clock.getDelta(), 0.05);
+      const t = clock.elapsedTime;
+      const motion = reduceMotion ? 0.2 : 1;
+
+      // 1) Вращение вокруг своей оси
+      car.rotation.y += dt * CONFIG.rotateSpeed * motion;
+
+      // 2) Левитация: синусоидальное «парение» вверх-вниз
+      const hover = Math.sin(t * 1.2) * 0.12 * motion;
+
+      // 3) Скролл: на первом экране машина по центру, дальше — уменьшается
+      //    и уезжает вправо (на телефоне — вверх), уступая место тексту
+      const p = Math.min(window.scrollY / window.innerHeight, 1.6);
+      const mob = isMobile();
+      const targetX = mob ? 0 : p * 3.4;
+      const targetY = (mob ? 0.45 : 0) + (mob ? p * 2.2 : p * 0.6);
+      const targetScale = (mob ? 0.82 : 1) * (1 - Math.min(p, 1) * 0.35);
+      // Дальше по странице 3D приглушается, чтобы карточки читались
+      const targetOpacity = p > 1.05 ? Math.max(0.28, 1 - (p - 1.05) * 1.3) : 1;
+
+      // 4) Параллакс: машина наклоняется в сторону курсора
+      const targetTiltZ = -mouse.x * 0.12 * motion;
+      const targetTiltX = mouse.y * 0.08 * motion;
+
+      smooth.x = lerp(smooth.x, targetX, 0.06);
+      smooth.y = lerp(smooth.y, targetY, 0.06);
+      smooth.scale = lerp(smooth.scale, targetScale, 0.06);
+      smooth.tiltX = lerp(smooth.tiltX, targetTiltX, 0.05);
+      smooth.tiltZ = lerp(smooth.tiltZ, targetTiltZ, 0.05);
+      smooth.opacity = lerp(smooth.opacity, targetOpacity, 0.08);
+
+      carRig.position.set(smooth.x, smooth.y + hover, 0);
+      carRig.scale.setScalar(smooth.scale);
+      carRig.rotation.set(smooth.tiltX, 0, smooth.tiltZ);
+      floor.position.set(smooth.x, -0.95 + smooth.y * 0.6, 0);
+      floor.scale.setScalar(smooth.scale);
+      canvas.style.opacity = smooth.opacity.toFixed(3);
+
+      // Колёса медленно вращаются, будто машина «катится» в воздухе
+      wheels.forEach((w) => { w.rotation.z -= dt * 1.4 * motion; });
+
+      // Подсветка снизу «дышит» в такт левитации
+      under.intensity = CONFIG.glowIntensity * (0.8 + 0.25 * Math.sin(t * 1.2));
+      glow.material.opacity = 0.55 + 0.25 * Math.sin(t * 1.2);
+
+      // Частицы: каждая кружит по своей орбите и слегка покачивается
+      const arr = pGeo.attributes.position.array;
+      for (let i = 0; i < pCount; i++) {
+        const m = pMeta[i];
+        m.a += dt * m.speed * motion;
+        arr[i * 3] = Math.cos(m.a) * m.r + smooth.x;
+        arr[i * 3 + 1] = m.y + Math.sin(t * 0.8 + m.bob) * 0.15 + smooth.y;
+        arr[i * 3 + 2] = Math.sin(m.a) * m.r;
+      }
+      pGeo.attributes.position.needsUpdate = true;
+
+      camera.lookAt(lookTarget.x, lookTarget.y + (mob ? 0.6 : 0), lookTarget.z);
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    // Пауза, когда вкладка скрыта — экономия батареи
+    document.addEventListener('visibilitychange', () => {
+      running = !document.hidden;
+      if (running) { clock.getDelta(); requestAnimationFrame(frame); }
+    });
+  })();
+  </script>
+</body>
+</html>
